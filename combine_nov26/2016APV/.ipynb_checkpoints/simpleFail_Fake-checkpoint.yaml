@@ -1,0 +1,15 @@
+#samples:
+  #- Fake #note to self: don't put in fakes since reading those in separately
+
+regions_sel:
+    # put any "selection name: selection" here to store it in the templates    
+    "SR1": (numberBJets_Medium_OutsideFatJets == 0) & (ReconVCandidateFatJetVScore < 0.9) & (THWW > 0.905) & (met_pt > 30) & (fj_pt > 250) & (h_fj_pt > 250) 
+
+samples_dir:
+
+    "2018": /uscms/home/jieun201/nobackup/YOURWORKINGAREA/dec_12/2018
+    "2017": /uscms/home/jieun201/nobackup/YOURWORKINGAREA/sept21_files/2017
+    "2016": /uscms/home/jieun201/nobackup/YOURWORKINGAREA/sept21_files/2016
+    "2016APV": /uscms/home/jieun201/nobackup/YOURWORKINGAREA/dec_12/2016APV
+
+model_path: /uscms/home/jieun201/nobackup/YOURWORKINGAREA/model.onnx
