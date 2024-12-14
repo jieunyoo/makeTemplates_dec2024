@@ -1,0 +1,48 @@
+# Datacard for <Channel (wsfSingleFail) instance at 0x7f05aea78640> generated on 2024-12-02 22:52:39.586775
+imax 1 # number of categories ('bins' but here we are using shape templates)
+jmax 1 # number of samples minus 1
+kmax 33 # number of nuisance parameters
+shapes * wsfSingleFail sfModel.root sfModel:wsfSingleFail_$PROCESS sfModel:wsfSingleFail_$PROCESS_$SYSTEMATIC
+bin wsfSingleFail
+observation 88198.000
+bin                                   wsfSingleFail  wsfSingleFail
+process                                         wqq            qcd
+process                                           0              1
+rate                                      41501.302      57399.069
+CMS_lumi lnN                                 1.0150         1.0230
+CMS_scale shapeU                             1.3000              -
+CMS_smear shapeU                             0.6000              -
+wsfSingleFail_qcd_mcstat_bin0 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin1 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin10 shape              -         1.0000
+wsfSingleFail_qcd_mcstat_bin11 shape              -         1.0000
+wsfSingleFail_qcd_mcstat_bin12 shape              -         1.0000
+wsfSingleFail_qcd_mcstat_bin13 shape              -         1.0000
+wsfSingleFail_qcd_mcstat_bin14 shape              -         1.0000
+wsfSingleFail_qcd_mcstat_bin2 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin3 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin4 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin5 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin6 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin7 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin8 shape               -         1.0000
+wsfSingleFail_qcd_mcstat_bin9 shape               -         1.0000
+wsfSingleFail_wqq_mcstat_bin0 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin1 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin10 shape         1.0000              -
+wsfSingleFail_wqq_mcstat_bin11 shape         1.0000              -
+wsfSingleFail_wqq_mcstat_bin12 shape         1.0000              -
+wsfSingleFail_wqq_mcstat_bin13 shape         1.0000              -
+wsfSingleFail_wqq_mcstat_bin14 shape         1.0000              -
+wsfSingleFail_wqq_mcstat_bin2 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin3 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin4 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin5 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin6 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin7 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin8 shape          1.0000              -
+wsfSingleFail_wqq_mcstat_bin9 shape          1.0000              -
+effSF extArg sfModel.root:sfModel
+effSF_un extArg sfModel.root:sfModel
+effSF_effect_wsfSingleFail_wqq rateParam wsfSingleFail wqq (((1-@0)*0.6588950053208565)+1) effSF
+effSF_un_effect_wsfSingleFail_qcd rateParam wsfSingleFail qcd (((1-@0)*0.14236468351879558)+1) effSF_un

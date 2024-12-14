@@ -1,0 +1,7 @@
+{
+    "fit": "single",
+    "out": "2016APV",
+    "scale": 1.0,
+    "smear": 0.5,
+    "template1": "templates/2016APV_output.root"
+}

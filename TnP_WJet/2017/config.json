@@ -1,0 +1,7 @@
+{
+    "fit": "single",
+    "out": "2017",
+    "scale": 1.2,
+    "smear": 0.2,
+    "template1": "templates/2017_output2.root"
+}
