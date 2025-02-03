@@ -13,7 +13,7 @@ import pyarrow.parquet as pq
 from coffea import processor
 from coffea.analysis_tools import PackedSelection, Weights
 from coffea.nanoevents.methods import candidate
-from boostedhiggs.utils import ELE_PDGID, MU_PDGID
+from boostedhiggs.utils import ELE_PDGID, MU_PDGID, match_V
 
 logger = logging.getLogger(__name__)
 
@@ -341,8 +341,8 @@ class vhprocessorAK4(processor.ProcessorABC):
 
         dr_two_jets = candidatefj.delta_r(second_fj)
 
-        Vboson_Jet_mass, jmsr_shifted_fatjetvars = get_jmsr(secondFJ, num_jets=1, year=self._year, isData=not self.isMC)
-        correctedVbosonNominalMass = ak.firsts(Vboson_Jet_mass)
+        jmsr_shifted_fatjetvars = get_jmsr(secondFJ, num_jets=1, year=self._year, isData=not self.isMC)
+        #correctedVbosonNominalMass = ak.firsts(Vboson_Jet_mass)
 
         #*************************************************************************
         # OBJECT: AK4 jets
@@ -541,39 +541,10 @@ class vhprocessorAK4(processor.ProcessorABC):
         met_fj_dphi = candidatefj.delta_phi(met)
 
 
+#add genmatching for V - use Farouk's functino here
 
         if self.isMC: 
-            absid = abs(events.GenPart.pdgId)
-
-            getZ_Children = events.GenPart[  (absid == 23)  & events.GenPart.hasFlags(['isPrompt', 'isLastCopy','fromHardProcess'])
-            & (abs(events.GenPart.distinctParent.pdgId) != 25)].children.pdgId
-
-            countquarks = ak.count_nonzero(getZ_Children,axis=2)
-            quarkcountremovenone = countquarks[~(ak.is_none(countquarks, axis=1))]
-            countQ = ak.firsts(quarkcountremovenone)
-
-            CQ = abs(getZ_Children) == 5 
-            countCQ_first = ak.count_nonzero(CQ,axis=2)
-
-            Cquarkcountremovenone = countCQ_first[~(ak.is_none(countCQ_first, axis=1))]
-            countZQ = ak.firsts(Cquarkcountremovenone)
-
-
-
-        if self.isMC: 
-
-#do for W first
-            getZ_Children = events.GenPart[  (absid == 23)  & events.GenPart.hasFlags(['isPrompt', 'isLastCopy','fromHardProcess']) & (abs(events.GenPart.distinctParent.pdgId) != 25)].children.pdgId
-            CQ = (abs(getZ_Children) == 11) | (abs(getZ_Children) == 12) | (abs(getZ_Children) == 13) | (abs(getZ_Children) == 14) | (abs(getZ_Children) == 15)  | (abs(getZ_Children) == 16)  | (abs(getZ_Children) == 17)  | (abs(getZ_Children) == 18)
-            countCQ_first = ak.count_nonzero(CQ,axis=2)
-            Cquarkcountremovenone = countCQ_first[~(ak.is_none(countCQ_first, axis=1))]
-            sumZLep = ak.sum(Cquarkcountremovenone,axis=1)#[0:5]
-
-            getW_Children = events.GenPart[  (absid == 24)  & events.GenPart.hasFlags(['isPrompt', 'isLastCopy','fromHardProcess']) & (abs(events.GenPart.distinctParent.pdgId) != 25)].children.pdgId
-            CWLep = (abs(getW_Children) == 11) | (abs(getW_Children) == 12) | (abs(getW_Children) == 13) | (abs(getW_Children) == 14) | (abs(getW_Children) == 15)  | (abs(getW_Children) == 16)  | (abs(getW_Children) == 17)  | (abs(getW_Children) == 18)
-            countWLep_first = ak.count_nonzero(CWLep,axis=2)
-            CquarkcountremovenoneW = countWLep_first[~(ak.is_none(countWLep_first, axis=1))]
-            sumWLep = ak.sum(CquarkcountremovenoneW,axis=1)#[0:5]
+            genVars, matched_mask = match_V(events.GenPart, second_fj )  #get gen Vars for matched V boson only
 
 
         if self.isMC: 
@@ -610,6 +581,10 @@ class vhprocessorAK4(processor.ProcessorABC):
         rec1 = candidatelep_p4 + candidateNeutrino
         rec2 = candidateHiggs - candidatelep_p4
         rec_higgs = rec1 + rec2
+
+
+
+
 
 
         if self.isMC: 
@@ -649,24 +624,18 @@ class vhprocessorAK4(processor.ProcessorABC):
             "NumFatjets": NumFatjets, # NumFatjets = ak.num(good_fatjets)
             "h_fj_pt": candidatefj.pt, #Higgs
             "ReconVCandidateFatJetVScore": VCandidateVScore, # VCandidateVScore = VScore(second_fj)
-            "ReconVCandidateMass": VCandidate_Mass,  #VCandidate_Mass = second_fj.msdcorr
+            "ReconVCandidateMass": second_fj.msoftdrop,  #VCandidate_Mass = second_fj.msdcorr
+            
+
             "numberAK4JetsOutsideFatJets": NumOtherJetsOutsideBothJets,
             "numberBJets_Medium_OutsideFatJets": n_bjets_M_OutsideBothJets,
-	    #"numberBJets_Tight_OutsideFatJets": n_bjets_T_OutsideBothJets,
 
             "dr_TwoFatJets": dr_two_jets, #dr_two_jets = candidatefj.delta_r(second_fj)
             "higgsMass": rec_higgs.mass,
        
             "ues_up": met.MET_UnclusteredEnergy.up.pt,
             "ues_down": met.MET_UnclusteredEnergy.down.pt,
-            #"numberBJets_Medium_OutsideHiggs": n_bjets_M_OutsideHiggs,
-            #"numberBJets_Tight_OutsideHiggs": n_bjets_T_OutsideHiggs,
-            #"numberBJets_Medium_OutsideV": n_bjets_M_OutsideV,
-            #"numberBJets_Tight_OutsideV": n_bjets_T_OutsideV,
             "pileupWeightCheck": pw_pass,
-            #"ak4_jet1":  ak.firsts(ak4_jet1.pt),
-            #"ak4_jet2":  ak.firsts(ak4_jet2.pt),
-
 
             "numberBJets_JES_down": numBJets_JES_down,
             "numberBJets_JES_up": numBJets_JES_up,
@@ -700,9 +669,6 @@ class vhprocessorAK4(processor.ProcessorABC):
             "numberBJets_JES_Total_up": numBJetsJES_Total_up,
             "numberBJets_JES_Total_down": numBJetsJES_Total_down,
 
-             "countZQ": countZQ,
-             "countWLep": sumWLep,
-             "countZLep": sumZLep,
              "dR_genlep_recolep": dR_genlep_recolep,
              "deta": deta,
              "mjj": mjj,
@@ -711,11 +677,14 @@ class vhprocessorAK4(processor.ProcessorABC):
              "jetvetomap": cut_jetveto,
       }
 
+        variables = {**variables, **genVars}
+
+
         fatjetvars = {
             "fj_eta": second_fj.eta,
             "fj_phi": second_fj.phi,
             "fj_pt": second_fj.pt,
-            "fj_mass": correctedVbosonNominalMass,
+            "fj_mass": second_fj.msoftdrop,
             }
         variables = {**variables, **fatjetvars}
 
@@ -723,9 +692,11 @@ class vhprocessorAK4(processor.ProcessorABC):
             fatjetvars_sys = {}
             for shift, vals in jec_shifted_fatjetvars["pt"].items():
                 if shift != "":
-                    fatjetvars_sys[f"fj_pt{shift}"] = ak.firsts(vals[VIndex])  #to do: change this to the V
+                    fatjetvars_sys[f"fj_pt{shift}"] = ak.firsts(vals[VIndex])  #this is for the JEC for the V
                     #print('fj pt shift', ak.to_list(fatjetvars_sys[f"fj_pt{shift}"])[0:100]) 
 
+
+#Jan 23rd: put back in JMR/JMS
             for shift, vals in jmsr_shifted_fatjetvars["msoftdrop"].items():
                 if shift != "":
                     fatjetvars_sys[f"fj_mass{shift}"] = ak.firsts(vals)
