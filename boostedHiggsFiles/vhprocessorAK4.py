@@ -15,6 +15,8 @@ from coffea.analysis_tools import PackedSelection, Weights
 from coffea.nanoevents.methods import candidate
 from boostedhiggs.utils import ELE_PDGID, MU_PDGID, match_V
 
+from coffea.nanoevents.methods.nanoaod import GenParticleArray, JetArray
+
 logger = logging.getLogger(__name__)
 
 from boostedhiggs.corrections import (
@@ -38,7 +40,7 @@ from boostedhiggs.corrections import (
     met_factory,
     add_TopPtReweighting,
 )
-from boostedhiggs.utils import VScore, match_H, match_Top, match_V, sigs, get_pid_mask
+from boostedhiggs.utils import VScore, match_H2, match_Top, match_V, sigs, get_pid_mask
 
 from .run_tagger_inference import runInferenceTriton
 
@@ -341,9 +343,12 @@ class vhprocessorAK4(processor.ProcessorABC):
 
         dr_two_jets = candidatefj.delta_r(second_fj)
 
-        jmsr_shifted_fatjetvars = get_jmsr(secondFJ, num_jets=1, year=self._year, isData=not self.isMC)
-        #correctedVbosonNominalMass = ak.firsts(Vboson_Jet_mass)
+        #jmsr_shifted_fatjetvars = get_jmsr(secondFJ, num_jets=1, year=self._year, isData=not self.isMC)
 
+        #jmsr_shifted_fatjetvars = get_jmsr(secondFJ, num_jets=1, year=self._year, isData=not self.isMC)
+        #V_nom = jmsr_shifted_fatjetvars["msoftdrop"][""]
+
+        #print('correctedMass', correctedVbosonNominalMass)
         #*************************************************************************
         # OBJECT: AK4 jets
         jets, jec_shifted_jetvars = get_jec_jets(events, events.Jet, self._year, not self.isMC, self.jecs, fatjets=False)
@@ -541,10 +546,6 @@ class vhprocessorAK4(processor.ProcessorABC):
         met_fj_dphi = candidatefj.delta_phi(met)
 
 
-#add genmatching for V - use Farouk's functino here
-
-        if self.isMC: 
-            genVars, matched_mask = match_V(events.GenPart, second_fj )  #get gen Vars for matched V boson only
 
 
         if self.isMC: 
@@ -582,11 +583,6 @@ class vhprocessorAK4(processor.ProcessorABC):
         rec2 = candidateHiggs - candidatelep_p4
         rec_higgs = rec1 + rec2
 
-
-
-
-
-
         if self.isMC: 
              genlep = events.GenPart[get_pid_mask(events.GenPart, [ELE_PDGID, MU_PDGID], byall=False)* events.GenPart.hasFlags(["fromHardProcess", "isLastCopy", "isPrompt"])]
              GenLep = ak.zip(         {
@@ -598,13 +594,21 @@ class vhprocessorAK4(processor.ProcessorABC):
             with_name="PtEtaPhiMCandidate",
             behavior=candidate.behavior,
         )
-
              dR_genlep_recolep = GenLep.delta_r(candidatelep_p4)
              genlep_idx = ak.argmin(dR_genlep_recolep, axis=1, keepdims=True)
              dR_genlep_recolep = ak.firsts(dR_genlep_recolep[genlep_idx])
 
 
-        
+
+#add genmatching for V - use Farouk's functino here
+        if self.isMC: 
+            genVars, matched_mask = match_V(events.GenPart, second_fj )  #get gen Vars for matched V boson only
+
+        if self.isMC:
+             if self.isSignal:
+                  HiggsgenVars = match_H2(events.GenPart, candidatefj, fatjet_pt=candidatefj.pt)
+                  genVars = {**genVars, **HiggsgenVars}
+
         ######################
         # Store variables
         ######################
@@ -625,8 +629,6 @@ class vhprocessorAK4(processor.ProcessorABC):
             "h_fj_pt": candidatefj.pt, #Higgs
             "ReconVCandidateFatJetVScore": VCandidateVScore, # VCandidateVScore = VScore(second_fj)
             "ReconVCandidateMass": second_fj.msoftdrop,  #VCandidate_Mass = second_fj.msdcorr
-            
-
             "numberAK4JetsOutsideFatJets": NumOtherJetsOutsideBothJets,
             "numberBJets_Medium_OutsideFatJets": n_bjets_M_OutsideBothJets,
 
@@ -685,6 +687,7 @@ class vhprocessorAK4(processor.ProcessorABC):
             "fj_phi": second_fj.phi,
             "fj_pt": second_fj.pt,
             "fj_mass": second_fj.msoftdrop,
+            #"fj_mass": V_nom,
             }
         variables = {**variables, **fatjetvars}
 
@@ -695,14 +698,16 @@ class vhprocessorAK4(processor.ProcessorABC):
                     fatjetvars_sys[f"fj_pt{shift}"] = ak.firsts(vals[VIndex])  #this is for the JEC for the V
                     #print('fj pt shift', ak.to_list(fatjetvars_sys[f"fj_pt{shift}"])[0:100]) 
 
-
+#march12 - remove this and save the softdrop mass (uncorrected); will do correction after making the files
 #Jan 23rd: put back in JMR/JMS
-            for shift, vals in jmsr_shifted_fatjetvars["msoftdrop"].items():
-                if shift != "":
-                    fatjetvars_sys[f"fj_mass{shift}"] = ak.firsts(vals)
+        #    for shift, vals in jmsr_shifted_fatjetvars["msoftdrop"].items():
+        #        if shift != "":
+        #            fatjetvars_sys[f"fj_mass{shift}"] = ak.firsts(vals)
+        #            #print('fj mass shift', ak.to_list(fatjetvars_sys[f"fj_mass{shift}"])[0:100]) 
 
             variables = {**variables, **fatjetvars_sys}
             fatjetvars = {**fatjetvars, **fatjetvars_sys}
+#****************************************************************************************************
 
             higgsPT_vars = { #need these for systematics, don't comment out
             "h_fj_eta": candidatefj.eta,
@@ -832,7 +837,8 @@ class vhprocessorAK4(processor.ProcessorABC):
                     variables["top_reweighting"] = add_TopPtReweighting(tops.pt)
 
                 if self.isSignal:
-                    add_HiggsEW_kFactors(self.weights[ch], events.GenPart, dataset)
+                    ew_weight = add_HiggsEW_kFactors(events.GenPart, dataset)
+                    variables["EW_weight"] = ew_weight
 
                 if self.isSignal or "TT" in dataset or "WJets" in dataset or "ST_" in dataset:
                     """

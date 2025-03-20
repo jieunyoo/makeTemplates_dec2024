@@ -3,6 +3,7 @@ import pickle
 import warnings
 from typing import Dict
 
+import numpy as np
 import awkward as ak
 import correctionlib
 import numpy as np
@@ -245,30 +246,31 @@ with importlib.resources.path("boostedhiggs.data", "EWHiggsCorrections.json") as
     hew_kfactors = correctionlib.CorrectionSet.from_file(str(filename))
 
 
-def add_HiggsEW_kFactors(weights, genpart, dataset):
+def add_HiggsEW_kFactors(genpart, dataset):
     """EW Higgs corrections"""
 
     def get_hpt():
         boson = ak.firsts(genpart[(genpart.pdgId == 25) & genpart.hasFlags(["fromHardProcess", "isLastCopy"])])
         return np.array(ak.fill_none(boson.pt, 0.0))
 
+    hpt = get_hpt()
+    ewknominal = np.ones_like(hpt)
+
     if "VBF" in dataset:
-        hpt = get_hpt()
         ewkcorr = hew_kfactors["VBF_EW"]
         ewknom = ewkcorr.evaluate(hpt)
-        weights.add("VBF_EW", ewknom)
+        ewknominal[hpt >= 400] = ewknom[hpt >= 400]
 
-    if "WplusH" in dataset or "WminusH" in dataset or "ZH" in dataset:
-        hpt = get_hpt()
+    if ("WplusH" in dataset or "WminusH" in dataset or "ZH" in dataset or "HWminus" in dataset or "HWplus" in dataset or "HZ" in dataset):
         ewkcorr = hew_kfactors["VH_EW"]
         ewknom = ewkcorr.evaluate(hpt)
-        weights.add("VH_EW", ewknom)
+        ewknominal[hpt >= 400] = ewknom[hpt >= 400]
 
     if "ttH" in dataset:
-        hpt = get_hpt()
         ewkcorr = hew_kfactors["ttH_EW"]
         ewknom = ewkcorr.evaluate(hpt)
-        weights.add("ttH_EW", ewknom)
+        ewknominal[hpt >= 400] = ewknom[hpt >= 400]
+    return ewknominal
 
 
 def build_lumimask(filename):
@@ -834,58 +836,52 @@ jmsr_vars = ["msoftdrop"]
 jmsValues = {}
 jmrValues = {}
 
-jmsValues["msoftdrop"] = {
+#jmsValues["msoftdrop"] = {
+#    "2016APV": [0.991,0.986,0.996],
+#    "2016": [0.997,0.992,1.003],
+#    "2017": [1.00,0.996,1.005],
+#    "2018": [0.997,0.993,1.001],
+#    }
 #jmrValues["msoftdrop"] = {
-    "2016APV": [0.822,0.902,1.101],
-    "2016": [0.937,0.893,1.13],
-    "2017": [1.007,0.906,1.094],
-    "2018": [0.947,0.92,1.078],
-    }
+#    "2016APV": [0.934,0.889,1.006],
+#    "2016": [1.167,1.329,1.027],
+#    "2017": [1.081,1.163,1.017],  # nominal, down, up
+#    "2018": [0.871,0.764,0.996],
+#}
 
 #jmsValues["msoftdrop"] = {
-jmrValues["msoftdrop"] = {
-    "2016APV": [0.934,0.86,1.126],
-    "2016": [1.167,0.887,1.107],  # nominal, down, up
-    "2017": [1.081,0.908,1.088],
-    "2018": [0.871,0.907,1.084],
-}
+#    "2016APV": [0.822,0.724,0.923],
+#    "2016": [0.937,0.83,1.067],
+#    "2017": [1.007,0.913,1.101],
+#    "2018": [0.947,0.867,1.025],
+#    }
+#jmrValues["msoftdrop"] = {
+#    "2018": [0.871,0.778,0.955],
+#    "2016APV": [0.934,0.794,1.06],
+#    "2016": [1.167,1.054,1.274],  # nominal, down, up
+#    "2017": [1.081,0.989,1.169],
+#}
 
-
-def get_jmsr(fatjets, num_jets: int, year: str, isData: bool = False) -> dict:
-    """Calculates post JMS/R masses and shifts"""
+def get_jmsr(fatjets, num_jets: int, year: str, isData: bool = False,seed: int = 42) -> dict:
     jmsr_shifted_vars = {}
-
     for mkey in jmsr_vars:
         tdict = {}
-
-
-        #mass = utils.pad_val(fatjets[mkey], num_jets, axis=1)
         mass = pad_val(fatjets[mkey], num_jets, axis=1)
-
         if isData:
-            #mass = pad_val(fatjets[mkey], num_jets, axis=1)
             tdict[""] = mass
-            #nominalVMass = mass 
-
         else:
-            # np.random.seed(seed)
             smearing = np.random.normal(size=mass.shape)
-            # scale to JMR nom, down, up (minimum at 0)
-            jmr_nom, jmr_down, jmr_up = (
-                ((smearing * max(jmrValues[mkey][year][i] - 1, 0)) + 1) for i in range(3)
-            )
+            jmr_nom, jmr_down, jmr_up = [
+    smearing * (jmrValues[mkey][year][i] - 1) + 1 for i in range(3)
+]
             jms_nom, jms_down, jms_up = jmsValues[mkey][year]
-
             mass_jms = mass * jms_nom
             mass_jmr = mass * jmr_nom
-
             tdict[""] = mass_jms * jmr_nom
-            tdict["JMS_down"] = mass_jmr * jms_down
-            tdict["JMS_up"] = mass_jmr * jms_up
             tdict["JMR_down"] = mass_jms * jmr_down
             tdict["JMR_up"] = mass_jms * jmr_up
-        #nominalVMass = mass_jms * jmr_nom
-
+            tdict["JMS_down"] = mass_jmr * jms_down
+            tdict["JMS_up"] = mass_jmr * jms_up
         jmsr_shifted_vars[mkey] = tdict
 
     return jmsr_shifted_vars
